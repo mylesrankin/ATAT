@@ -5,6 +5,7 @@ import re
 from html.parser import HTMLParser
 import json
 import pymysql
+import requests
 
 url = "https://www.autotrader.co.uk/car-search?sort=sponsored&radius=90&postcode=b904uh&onesearchad=Used&onesearchad=Nearly%20New&onesearchad=New&make=BMW&model=M2"
 
@@ -15,6 +16,14 @@ def getTotalPages(pageUrl):
     data = soup.find('var',attrs={ "id" : "fpa-navigation"})
     jsonData = json.loads(data['fpa-navigation'])
     return jsonData['totalPages']
+
+def getCoords(advertID):
+    url = 'https://www.autotrader.co.uk/json/fpa/initial/'+str(advertID)
+    req = requests.get(url)
+    data = req.json()
+    data =  data['seller']['longitude'].split(',')
+    data.reverse()
+    return(data) # Returns as [longitude,latitude]
 
 def pageScraper(pageUrl):
     # Request stuff
@@ -32,16 +41,21 @@ def pageScraper(pageUrl):
                 #print(a.text)
                 #print(a['href'])
                 if(m.group(0)[:3] != 'new'):
+                    loc = getCoords(m.group(0))
                     url = {
                             "advertID": m.group(0),
                             "advertName": a.text,
-                            "advertURL": a['href']
+                            "advertURL": a['href'],
+                            "longitude": loc[0],
+                            "latitude": loc[1]
                             }
                     urls.append(url)
+                print(url)
                 #print('_________')
             except:
-                print('Skipping New Car Ad')
-                print('________')
+                #print('Skipping New Car Ad')
+                #print('________')
+                pass
     return urls
 
 def cleanUrl(url):
@@ -57,20 +71,25 @@ def scrapeSearchParameter(url):
     advertsData = []
     for i in range(1, totalPages+1):
         advertsData = advertsData + (pageScraper(url + "&page=" + str(i)))
-    print('Found '+str(len(advertsData))+' new adverts within the filter parameters')
+    #print('Found '+str(len(advertsData))+' new adverts within the filter parameters')
     return advertsData
 
 def updateWatchlistDB(data):
-    mydb = pymysql.connect(host='localhost',
-    user='root',
-    db='carswatchlist')
-    cursor = mydb.cursor()
+    try:
+        mydb = pymysql.connect(host='localhost',
+        user='root',
+        db='carswatchlist')
+        cursor = mydb.cursor()
 
-    for row in data:
-        cursor.execute("INSERT INTO watchlist(advertID, advertName, advertURL) VALUES (%s,%s,%s) ON DUPLICATE KEY UPDATE advertID = %s, advertName = %s, advertURL = %s", (int(row['advertID']), row['advertName'], row['advertURL'], int(row['advertID']), row['advertName'], row['advertURL']))
-        
-    mydb.commit()
-    cursor.close()
+        for row in data:
+            cursor.execute("INSERT INTO watchlist(advertID, advertName, advertURL) VALUES (%s,%s,%s) ON DUPLICATE KEY UPDATE advertID = %s, advertName = %s, advertURL = %s", (int(row['advertID']), row['advertName'], row['advertURL'], int(row['advertID']), row['advertName'], row['advertURL']))
+            
+        mydb.commit()
+        cursor.close()
+        print('true')
+    except:
+        print('false')
 
 if __name__ == "__main__":
     updateWatchlistDB(scrapeSearchParameter(url))
+
