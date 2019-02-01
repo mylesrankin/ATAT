@@ -1,43 +1,58 @@
-/*
-const rp = require('request-promise');
-const $ = require('cheerio');
+// Node modules
+var express = require('express')
+var http = require('http')
+var path = require('path')
+var bodyParser = require('body-parser')
+var PythonShell = require('python-shell');
 
-function advertScraper(url){
-    rp(url)
-        .then(function(html){
-            //success!
-            const urls = [];
-            for (let i = 0; i < 45; i++) {
-                urls.push($('a', html)[i].attribs.href);
-            }
-        })
-        .catch(function(err){
-            //handle error
-            console.log("error")
-        });
-}
+var app = express()
 
-advertScraper('https://www.autotrader.co.uk/car-search?sort=sponsored&radius=15&postcode=b904uh&onesearchad=Used&onesearchad=Nearly%20New&onesearchad=New&make=BMW&model=M2'); */
+var publicDir = path.join(__dirname, 'public')
 
-const puppeteer = require('puppeteer');
-const $ = require('cheerio');
-const url = 'https://www.autotrader.co.uk/car-search?sort=sponsored&radius=15&postcode=b904uh&onesearchad=Used&onesearchad=Nearly%20New&onesearchad=New&make=BMW&model=M2';
+app.set('port', process.env.PORT || 3000)
 
-puppeteer
-    .launch()
-    .then(function(browser) {
-        return browser.newPage();
+app.use(bodyParser.json()) // Parses json, multi-part (file), url-encoded
+
+app.use(function(req, res, next) {
+    res.header("Access-Control-Allow-Origin", "*");
+    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, content-type, Data-Type, Accept, hardwareid, authtoken, username");
+    res.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS, PUT, DELETE")
+    next();
+});
+
+app.get('/', function (req, res) {
+    res.send('API Server Aliveggg');
+})
+
+app.get('/test', function(req,res){
+    res.json({
+        status: 'Alive',
+        data: {
+            title: 'test',
+            content: 'more testing'
+        }
     })
-    .then(function(page) {
-        return page.goto(url).then(function() {
-            return page.content();
-        });
-    })
-    .then(function(html) {
-        $('.js-click-handler listing-fpa-link', html).each(function() {
-            console.log($(this).text());
-        });
-    })
-    .catch(function(err) {
-        //handle error
+})
+
+app.get('/ATAT/v1/:advertid/:postcode/:searchurl', function (req, res){
+    var options = {
+        mode: 'text',
+        pythonPath: 'path/to/python',
+        pythonOptions: ['-u'],
+        scriptPath: 'path/to/my/scripts',
+        args: ['value1', 'value2', 'value3']
+    };
+
+    PythonShell.run('test.py', options, function (err, results) {
+        if (err)
+            throw err;
+        // Results is an array consisting of messages collected during execution
+        console.log('results: %j', results);
     });
+})
+
+var server = http.createServer(app)
+
+server.listen(app.get('port'), function () {
+    console.log('KioskAPI Server listening on port ' + app.get('port'))
+})

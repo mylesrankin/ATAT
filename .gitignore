@@ -1,4 +1,4 @@
-node_modules\
+node_modules/
 node_modules/.bin/extract-zip
 node_modules/.bin/extract-zip.cmd
 node_modules/.bin/mime
