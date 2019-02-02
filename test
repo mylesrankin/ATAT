@@ -28,5 +28,5 @@ client res = {
       searchUrl: 'http....',
       sourceCoords: [longitude, latitude],
       destCoords: [longitude, latitude],
-      advertIDs: [22222,222223,222224,2222225]
+      advertIDs: [22222,222223,]
  }

@@ -43,6 +43,10 @@ app.get('/test', function(req,res){
     })
 })
 
+app.get('/ATAT/v1/advert/:advertid', function (req, res){
+    
+})
+
 app.post('/ATAT/v1/search/', function (req, res){
     console.log('Request Received')
     console.log(req.body.destAdvertID)
@@ -79,8 +83,8 @@ app.post('/ATAT/v1/search/', function (req, res){
                 } else {
                     var destLonLat = bd2.seller.longitude.split(",").reverse()
                     var destLonLat = {
-                        lat: destLonLat[1],
-                        lon: destLonLat[0]
+                        lat: parseFloat(destLonLat[1]),
+                        lon: parseFloat(destLonLat[0])
                     }
                     console.log("dist between dest and source")
                     console.log(Distance.between(sourceLonLat, destLonLat).human_readable())
@@ -111,24 +115,48 @@ app.post('/ATAT/v1/search/', function (req, res){
                                         if(error)
                                             throw error;
                                         var waypointBody = JSON.parse(response.body);
-                                        var NCoords = (waypointBody.routes[0].geometry.coordinates.length)
-                                        var increment = Math.ceil(NCoords ** 0.45)
-                                        console.log(increment)
-                                        for (var i = 0; i < NCoords; i = i + increment) {
-                                            console.log(i);
+                                        var coords = waypointBody.routes[0].geometry.coordinates
+                                        var increment = Math.ceil(coords.length ** 0.40)
+                                        console.log('Increment %s', increment)
+                                        var advertsOnRoute = new Set();
+                                        console.log(result)
+                                        for(var i = 0; i < coords.length-1; i = i + increment){
+                                            // Checking waypoint coords in this loop
+                                            if(Math.ceil(i/coords.length*100) % 5 == 0){
+                                                console.log('%', i/coords.length*100)
+                                            }
+                                            var currentCoord = {
+                                                lat: coords[i][1],
+                                                lon: coords[i][0]
+                                            }
+
+                                            var n = 0;
+                                            result.forEach(function(data){
+                                                n++;
+                                                console.log(data)
+                                                console.log(n)
+                                                if(Distance.between(currentCoord, {lat:data.latitude,lon:data.longitude}).human_readable().distance < 30){
+                                                    console.log('Found advert within dist')
+                                                    advertsOnRoute.add(data.advertID)
+                                                    delete result[n]
+                                                }
+                                            });
+
                                         }
+                                        res.status(201)
+                                        res.json({
+                                            searchUrl: req.body.searchUrl,
+                                            sourceCoords: sourceLonLat,
+                                            destCoords: destLonLat,
+                                            advertsOnRoute: Array.from(advertsOnRoute)
+                                        })
+                                        console.log(advertsOnRoute)
+                                        console.log('Complete')
+
+
 
                                     });
 
-
-
-
-
-                                    // Check each advert
-                                    var advertsOnRoute = new Set();
-                                    result.forEach(function(data){
-                                        console.log("Checking: %s", data.advertID)
-                                    })
                                 });
                             });
                             res.status(200)
