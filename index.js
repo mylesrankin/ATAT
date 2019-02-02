@@ -26,6 +26,8 @@ app.use(bodyParser.urlencoded({
 }));
 app.use(bodyParser.json());
 
+app.use(express.static('public'))
+
 app.use(function(req, res, next) {
     res.header("Access-Control-Allow-Origin", "*");
     res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, application/json, content-type, Data-Type, Accept, hardwareid, authtoken, username");
@@ -33,18 +35,27 @@ app.use(function(req, res, next) {
     next();
 });
 
-app.get('/', function (req, res) {
-    res.send('API Server Aliveggg');
-})
-
 app.get('/test', function(req,res){
     res.json({
         status: 'Alive',
     })
 })
 
-app.get('/ATAT/v1/advert/:advertid', function (req, res){
-    
+app.get('/ATAT/v1/adv/:advertid', function (req, res){
+    con.query("SELECT * FROM watchlist WHERE advertID = "+req.params.advertid, function (err, result, fields) {
+        if(err){
+            console.log(err)
+        }
+        if(result.length == 0){
+            res.status(403)
+            res.json({status: "The advert requested does not exist"})
+        }else{
+            res.status(200)
+            res.json(result[0])
+        }
+        console.log(result.length)
+        console.log(result);
+    });
 })
 
 app.post('/ATAT/v1/search/', function (req, res){
@@ -89,8 +100,9 @@ app.post('/ATAT/v1/search/', function (req, res){
                     console.log("dist between dest and source")
                     console.log(Distance.between(sourceLonLat, destLonLat).human_readable())
                     ps.PythonShell.run('searchScraper.py', options, function (err, results) {
-                        if (err)
-                            throw err;
+                        if (err) {
+                            console.log(err)
+                        }
                         console.log('SCRAPE STATUS: %s', results[0])
                         var status = (results[0] == 'true');
                         if (status == true) {
@@ -135,7 +147,7 @@ app.post('/ATAT/v1/search/', function (req, res){
                                                 n++;
                                                 console.log(data)
                                                 console.log(n)
-                                                if(Distance.between(currentCoord, {lat:data.latitude,lon:data.longitude}).human_readable().distance < 30){
+                                                if(Distance.between(currentCoord, {lat:data.latitude,lon:data.longitude}).human_readable().distance < 5){
                                                     console.log('Found advert within dist')
                                                     advertsOnRoute.add(data.advertID)
                                                     delete result[n]
@@ -158,6 +170,7 @@ app.post('/ATAT/v1/search/', function (req, res){
                                     });
 
                                 });
+                                con.end();
                             });
                             res.status(200)
                         } else {

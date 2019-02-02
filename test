@@ -30,3 +30,16 @@ client res = {
       destCoords: [longitude, latitude],
       advertIDs: [22222,222223,]
  }
+
+     con.connect(function(err) {
+         if (err) throw err;
+         con.query("SELECT * FROM watchlist WHERE advertID = %s", req.params.advertid, function (err, result, fields) {
+             if (err){
+                 res.status(400)
+                 res.end({status:"Something went wrong"})
+             }else {
+                 res.status(201)
+                 res.end(result)
+             }
+         });
+     });
