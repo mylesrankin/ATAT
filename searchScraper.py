@@ -6,8 +6,12 @@ from html.parser import HTMLParser
 import json
 import pymysql
 import requests
+import hashlib
+import sys
 
-url = "https://www.autotrader.co.uk/car-search?sort=sponsored&radius=90&postcode=b904uh&onesearchad=Used&onesearchad=Nearly%20New&onesearchad=New&make=BMW&model=M2"
+
+#url = "https://www.autotrader.co.uk/car-search?sort=sponsored&radius=90&postcode=b904uh&onesearchad=Used&onesearchad=Nearly%20New&onesearchad=New&make=BMW&model=M2"
+url = sys.argv[1]
 
 def getTotalPages(pageUrl):
     req = Request(pageUrl, headers={'User-Agent': 'Mozilla/5.0'})
@@ -25,7 +29,7 @@ def getCoords(advertID):
     data.reverse()
     return(data) # Returns as [longitude,latitude]
 
-def pageScraper(pageUrl):
+def pageScraper(pageUrl, globUrl):
     # Request stuff
     req = Request(pageUrl, headers={'User-Agent': 'Mozilla/5.0'})
     page = urlopen(req)
@@ -46,11 +50,12 @@ def pageScraper(pageUrl):
                             "advertID": m.group(0),
                             "advertName": a.text,
                             "advertURL": a['href'],
+                            "searchHash": globUrl,
                             "longitude": loc[0],
                             "latitude": loc[1]
                             }
                     urls.append(url)
-                print(url)
+                #print(url)
                 #print('_________')
             except:
                 #print('Skipping New Car Ad')
@@ -67,10 +72,11 @@ def cleanUrl(url):
     
 def scrapeSearchParameter(url):
     url = cleanUrl(url)
+    globUrl = url
     totalPages = getTotalPages(url)
     advertsData = []
     for i in range(1, totalPages+1):
-        advertsData = advertsData + (pageScraper(url + "&page=" + str(i)))
+        advertsData = advertsData + (pageScraper(url + "&page=" + str(i), globUrl))
     #print('Found '+str(len(advertsData))+' new adverts within the filter parameters')
     return advertsData
 
@@ -80,10 +86,8 @@ def updateWatchlistDB(data):
         user='root',
         db='carswatchlist')
         cursor = mydb.cursor()
-
         for row in data:
-            cursor.execute("INSERT INTO watchlist(advertID, advertName, advertURL) VALUES (%s,%s,%s) ON DUPLICATE KEY UPDATE advertID = %s, advertName = %s, advertURL = %s", (int(row['advertID']), row['advertName'], row['advertURL'], int(row['advertID']), row['advertName'], row['advertURL']))
-            
+            cursor.execute("INSERT INTO watchlist(advertID, advertName, advertURL, searchHash, longitude, latitude) VALUES (%s,%s,%s,%s,%s,%s) ON DUPLICATE KEY UPDATE advertID = %s, advertName = %s, advertURL = %s, searchHash = %s, longitude = %s, latitude = %s", (int(row['advertID']), row['advertName'], row['advertURL'], row['searchHash'], float(row['longitude']), float(row['latitude']),int(row['advertID']), row['advertName'], row['advertURL'],row['searchHash'], float(row['longitude']), float(row['latitude'])))                    
         mydb.commit()
         cursor.close()
         print('true')
